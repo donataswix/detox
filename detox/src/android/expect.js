@@ -1,5 +1,7 @@
 const invoke = require('../invoke');
 const matchers = require('./matcher');
+const DetoxActionApi = require('./espressoapi/DetoxAction');
+const ViewActionsApi = require('./espressoapi/ViewActions');
 const Matcher = matchers.Matcher;
 const LabelMatcher = matchers.LabelMatcher;
 const IdMatcher = matchers.IdMatcher;
@@ -18,10 +20,8 @@ function setInvocationManager(im) {
   invocationManager = im;
 }
 
-const ViewActions = 'android.support.test.espresso.action.ViewActions';
 const ViewAssertions = 'android.support.test.espresso.assertion.ViewAssertions';
 const DetoxMatcher = 'com.wix.detox.espresso.DetoxMatcher';
-const DetoxAction = 'com.wix.detox.espresso.DetoxAction';
 const DetoxAssertion = 'com.wix.detox.espresso.DetoxAssertion';
 const EspressoDetox = 'com.wix.detox.espresso.EspressoDetox';
 
@@ -30,82 +30,64 @@ class Action {}
 class TapAction extends Action {
   constructor() {
     super();
-    this._call = invoke.call(invoke.Android.Class(ViewActions), 'click');
+    this._call = invoke.callDirectly(ViewActionsApi.click());
   }
 }
 
 class TapAtPointAction extends Action {
   constructor(value) {
     super();
-    this._call = invoke.call(invoke.Android.Class(DetoxAction), 'tapAtLocation', invoke.Android.Integer(value.x), invoke.Android.Integer(value.y));
+    this._call = invoke.callDirectly(DetoxActionApi.tapAtLocation(value.x, value.y));
   }
 }
 
 class LongPressAction extends Action {
   constructor() {
     super();
-    this._call = invoke.call(invoke.Android.Class(ViewActions), 'longClick');
+    this._call = invoke.callDirectly(ViewActionsApi.longClick());
   }
 }
 
 class MultiClickAction extends Action {
   constructor(times) {
     super();
-    this._call = invoke.call(invoke.Android.Class(DetoxAction), 'multiClick', invoke.Android.Integer(times));
+    this._call = invoke.callDirectly(DetoxActionApi.multiClick(times));
   }
 }
 
 class TypeTextAction extends Action {
   constructor(value) {
     super();
-    if (typeof value !== 'string') throw new Error(`TypeTextAction ctor argument must be a string, got ${typeof value}`);
-    this._call = invoke.call(invoke.Android.Class(ViewActions), 'typeText', value);
+    this._call = invoke.callDirectly(ViewActionsApi.typeText(value));
   }
 }
 
 class ReplaceTextAction extends Action {
   constructor(value) {
     super();
-    if (typeof value !== 'string') throw new Error(`ReplaceTextAction ctor argument must be a string, got ${typeof value}`);
-    this._call = invoke.call(invoke.Android.Class(ViewActions), 'replaceText', value);
+    this._call = invoke.callDirectly(ViewActionsApi.replaceText(value));
   }
 }
 
 class ClearTextAction extends Action {
   constructor() {
     super();
-    this._call = invoke.call(invoke.Android.Class(ViewActions), 'clearText');
+    this._call = invoke.callDirectly(ViewActionsApi.clearText());
   }
 }
 
 class ScrollAmountAction extends Action {
   constructor(direction, amount) {
     super();
-    if (typeof direction !== 'string') throw new Error(`ScrollAmountAction ctor 1st argument must be a string, got ${typeof direction}`);
-    switch (direction) {
-      case 'left': direction = 1; break;
-      case 'right': direction = 2; break;
-      case 'up': direction = 3; break;
-      case 'down': direction = 4; break;
-      default: throw new Error(`ScrollAmountAction direction must be a 'left'/'right'/'up'/'down', got ${direction}`);
-    }
-    if (typeof amount !== 'number') throw new Error(`ScrollAmountAction ctor 2nd argument must be a number, got ${typeof amount}`);
-    this._call = invoke.call(invoke.Android.Class(DetoxAction), 'scrollInDirection', invoke.Android.Integer(direction), invoke.Android.Double(amount));
+    this._call = invoke.callDirectly(DetoxActionApi.scrollInDirection(direction, amount));
   }
 }
 
 class ScrollEdgeAction extends Action {
   constructor(edge) {
     super();
-    if (typeof edge !== 'string') throw new Error(`ScrollEdgeAction ctor 1st argument must be a string, got ${typeof edge}`);
-    switch (edge) {
-      case 'left': edge = 1; break;
-      case 'right': edge = 2; break;
-      case 'top': edge = 3; break;
-      case 'bottom': edge = 4; break;
-      default: throw new Error(`ScrollEdgeAction edge must be a 'left'/'right'/'top'/'bottom', got ${edge}`);
-    }
-    this._call = invoke.call(invoke.Android.Class(DetoxAction), 'scrollToEdge', invoke.Android.Integer(edge));
+
+    this._call = invoke.callDirectly(DetoxActionApi.scrollToEdge(edge));
   }
 }
 
@@ -113,19 +95,10 @@ class SwipeAction extends Action {
   // This implementation ignores the percentage parameter
   constructor(direction, speed, percentage) {
     super();
-    if (typeof direction !== 'string') throw new Error(`SwipeAction ctor 1st argument must be a string, got ${typeof direction}`);
-    if (typeof speed !== 'string') throw new Error(`SwipeAction ctor 2nd argument must be a string, got ${typeof speed}`);
-    switch (direction) {
-      case 'left': direction = 1; break;
-      case 'right': direction = 2; break;
-      case 'up': direction = 3; break;
-      case 'down': direction = 4; break;
-      default: throw new Error(`SwipeAction direction must be a 'left'/'right'/'up'/'down', got ${direction}`);
-    }
     if (speed === 'fast') {
-      this._call = invoke.call(invoke.Android.Class(DetoxAction), 'swipeInDirection', invoke.Android.Integer(direction), invoke.Android.Boolean(true));
+      this._call = invoke.callDirectly(DetoxActionApi.swipeInDirection(direction, true));
     } else if (speed === 'slow') {
-      this._call = invoke.call(invoke.Android.Class(DetoxAction), 'swipeInDirection', invoke.Android.Integer(direction), invoke.Android.Boolean(false));
+      this._call = invoke.callDirectly(DetoxActionApi.swipeInDirection(direction, false));
     } else {
       throw new Error(`SwipeAction speed must be a 'fast'/'slow', got ${speed}`);
     }
@@ -142,9 +115,6 @@ class Interaction {
 class ActionInteraction extends Interaction {
   constructor(element, action) {
     super();
-    //if (!(element instanceof Element)) throw new Error(`ActionInteraction ctor 1st argument must be a valid Element, got ${typeof element}`);
-    //if (!(action instanceof Action)) throw new Error(`ActionInteraction ctor 2nd argument must be a valid Action, got ${typeof action}`);
-    //this._call = invoke.call(element._call, 'perform', action._call);
     this._call = invoke.call(invoke.Android.Class(EspressoDetox), 'perform', element._call, action._call);
     // TODO: move this.execute() here from the caller
   }
@@ -153,9 +123,6 @@ class ActionInteraction extends Interaction {
 class MatcherAssertionInteraction extends Interaction {
   constructor(element, matcher) {
     super();
-    //if (!(element instanceof Element)) throw new Error(`MatcherAssertionInteraction ctor 1st argument must be a valid Element, got ${typeof element}`);
-    //if (!(matcher instanceof Matcher)) throw new Error(`MatcherAssertionInteraction ctor 2nd argument must be a valid Matcher, got ${typeof matcher}`);
-    // this._call = invoke.call(element._call, 'check', invoke.call(invoke.Android.Class(ViewAssertions), 'matches', matcher._call));    
     this._call = invoke.call(invoke.Android.Class(DetoxAssertion), 'assertMatcher', element._call, matcher._call);
     // TODO: move this.execute() here from the caller
   }
@@ -164,8 +131,6 @@ class MatcherAssertionInteraction extends Interaction {
 class WaitForInteraction extends Interaction {
   constructor(element, matcher) {
     super();
-    //if (!(element instanceof Element)) throw new Error(`WaitForInteraction ctor 1st argument must be a valid Element, got ${typeof element}`);
-    //if (!(matcher instanceof Matcher)) throw new Error(`WaitForInteraction ctor 2nd argument must be a valid Matcher, got ${typeof matcher}`);
     this._element = element;
     this._originalMatcher = matcher;
     // we need to override the original matcher for the element and add matcher to it as well
@@ -218,7 +183,7 @@ class Element {
   atIndex(index) {
     if (typeof index !== 'number') throw new Error(`Element atIndex argument must be a number, got ${typeof index}`);
     const matcher = this._originalMatcher;
-    this._originalMatcher._call = invoke.call(invoke.Android.Class(DetoxMatcher), 'matherForAtIndex', invoke.Android.Integer(index), matcher._call);
+    this._originalMatcher._call = invoke.call(invoke.Android.Class(DetoxMatcher), 'matcherForAtIndex', invoke.Android.Integer(index), matcher._call);
     this._selectElementWithMatcher(this._originalMatcher);
     return this;
   }

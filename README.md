@@ -41,10 +41,10 @@ High velocity native mobile development requires us to adopt continuous integrat
 
 The most difficult part of automated testing on mobile is the tip of the testing pyramid - E2E. The core problem with E2E tests is flakiness - tests are usually not deterministic. We believe the only way to tackle flakiness head on is by moving from black box testing to gray box testing. That's where Detox comes into play.
 
-* **Cross Platform:** Write cross-platform tests in JavaScript. Currently supports iOS, Android following soon.
-* **Runs on Devices:** Gain confidence to ship by testing your app on a device/simulator just like a real user.
+* **Cross Platform:** Write cross-platform tests in JavaScript. Currently supports iOS, Android is nearly complete.  View the [Android status page](/docs/More.AndroidSupportStatus.md).
+* **Runs on Devices** (not yet supported on iOS): Gain confidence to ship by testing your app on a device/simulator just like a real user.
 * **Automatically Synchronized:** Stops flakiness at the core by monitoring asynchronous operations in your app.
-* **React Native Support:** Built from the ground up to support React Native projects as well as pure native ones.
+* **React Native Support:** Built from the ground up to support React Native projects as well as pure native ones. Currently, React Native versions 0.44 and above are supported.
 * **Made For CI:** Execute your E2E tests on CI platforms like Travis without grief. 
 * **Test Runner Independent:** Use Mocha, AVA, or any other JavaScript test runner you like.
 * **Debuggable:** Modern async-await API allows breakpoints in asynchronous tests to work as expected.
@@ -69,7 +69,7 @@ We believe that the only way to address the core difficulties with mobile end-to
 
 ## Contributing to Detox
 
-Open source from the first commit. If you're interested in helping out with our roadmap or you have a new feature to suggest, contact us and we'd love to get you on board.
+Open source from the first commit. If you're interested in helping out with our roadmap, please see issues tagged marked with the [![ ](https://placehold.it/15/d93f0b/000000?text=+) looking for contributors](https://github.com/wix/detox/labels/user%3A%20looking%20for%20contributors) label. If you have encoutnered a bug or would like to suggest a new feature, please open an issue.
 
 Dive into Detox core by reading the [Detox Contribution Guide](/docs/Guide.Contributing.md).
 

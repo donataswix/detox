@@ -1,4 +1,7 @@
-# The `device` Object
+---
+id: APIRef.DeviceObjectAPI
+title: The `device` Object
+---
 
 `device` is globally available in every test file, it enables control over the current attached device (currently only simulators are supported).
 
@@ -18,7 +21,8 @@
 - [`device.setURLBlacklist([urls])`](#deviceseturlblacklisturls)
 - [`device.enableSynchronization()`](#deviceenablesynchronization)
 - [`device.disableSynchronization()`](#devicedisablesynchronization)
-- [`device.resetContentAndSettings()`](#resetcontentandsettings)
+- [`device.resetContentAndSettings()`](#deviceresetcontentandsettings)
+- [`device.getPlatform()`](#devicegetplatform)
 
 ### `device.launchApp(params)`
 Launch the app defined in the current [`configuration`](APIRef.Configuration.md).
@@ -162,8 +166,11 @@ Currently only available in the iOS Simulator.<br>
 Check out Detox's [own test suite](../detox/test/e2e/f-device.js)
 
 ### `device.setLocation(lat, lon)`
+>Note: `setLocation` is dependent on `fbsimctl`. if `fbsimctl` is not installed, the command will fail, asking for it to be installed.
 Sets the simulator location to the given latitude and longitude.
-
+```js
+await device.setLocation(32.0853, 34.7818);
+```
 
 ### `device.setURLBlacklist([urls])`
 
@@ -200,4 +207,13 @@ previously set permissions.
 
 ```js
 await device.resetContentAndSettings();
+```
+
+### `device.getPlatform()`
+Returns the current device, `ios` or `android`.
+
+```js
+if (device.getPlatform() === 'ios') {
+  await expect(loopSwitch).toHaveValue('1');
+}
 ```

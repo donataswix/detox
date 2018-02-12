@@ -1,5 +1,5 @@
 {
-  "lerna": "2.1.2",
+  "lerna": "2.4.0",
   "packages": [
     "detox",
     "detox-server",
@@ -7,12 +7,14 @@
     "examples/demo-native-android",
     "examples/demo-native-ios",
     "examples/demo-react-native",
+    "examples/demo-react-native-jest",
     "detox/test",
     "generation"
   ],
   "commands": {
     "publish": {
       "ignore": [
+        "demo-react-native-jest",
         "detox-demo-native-android",
         "detox-demo-native-ios",
         "detox-demo-react-native",
@@ -21,6 +23,6 @@
       ]
     }
   },
-  "version": "independent",
-  "npmClient": "yarn"
+  "version": "7.0.1",
+  "npmClient": "npm"
 }

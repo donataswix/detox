@@ -1,17 +1,28 @@
 const exec = require('child-process-promise').exec;
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const _ = require('lodash');
 const IosDriver = require('./IosDriver');
 const AppleSimUtils = require('./AppleSimUtils');
 const configuration = require('../configuration');
+const environment = require('../utils/environment');
+const FileArtifact = require('../artifacts/FileArtifact');
 
 class SimulatorDriver extends IosDriver {
 
   constructor(client) {
     super(client);
     this._applesimutils = new AppleSimUtils();
+    this._recordings = {};
+  }
+
+  async prepare() {
+    const detoxFrameworkPath = await environment.getFrameworkPath();
+
+    if (!fs.existsSync(detoxFrameworkPath)) {
+      throw new Error(`${detoxFrameworkPath} could not be found, this means either you changed a version of Xcode or Detox postinstall script was unsuccessful. 
+      To attempt a fix try running 'detox clean-framework-cache && detox build-framework-cache'`);
+    }
   }
 
   async acquireFreeDevice(name) {
@@ -84,7 +95,28 @@ class SimulatorDriver extends IosDriver {
   }
 
   getLogsPaths(deviceId) {
-    return this._applesimutils.getLogsPaths(deviceId);
+    const {stdout, stderr} = this._applesimutils.getLogsPaths(deviceId);
+    return {
+      stdout: new FileArtifact(stdout),
+      stderr: new FileArtifact(stderr)
+    };
+  }
+
+  async takeScreenshot(deviceId) {
+    return new FileArtifact(await this._applesimutils.takeScreenshot(deviceId));
+  }
+
+  async startVideo(deviceId) {
+    this._recordings[deviceId] = await this._applesimutils.startVideo(deviceId);
+  }
+
+  async stopVideo(deviceId) {
+    const recording = this._recordings[deviceId];
+    if (recording) {
+      const video = await this._applesimutils.stopVideo(deviceId, recording);
+      delete this._recordings[deviceId];
+      return new FileArtifact(video);
+    }
   }
 }
 

@@ -1,19 +1,19 @@
 const exec = require('child-process-promise').exec;
 
+//TODO: Ignoring the test in CI until fbsimctl supports Xcode 9
 async function isFbsimctlInstalled() {
   try {
     await exec(`which fbsimctl`);
     return true;
   } catch (e) {
+    console.log(`setLocation only works through fbsimctl currently`);
     return false;
   }
 }
 
-describe('location', () => {
+describe(':ios: location', () => {
   it('Location should be unavabilable', async () => {
-    const fbsimclInstalled = await isFbsimctlInstalled();
-    if (!fbsimclInstalled) {
-      console.log(`setLocation only works through fbsimcl currently`);
+    if (!await isFbsimctlInstalled()) {
       return;
     }
     await device.relaunchApp({ permissions: { location: 'never' } });
@@ -23,9 +23,7 @@ describe('location', () => {
   });
 
   it('Should receive location (20,20)', async () => {
-    const fbsimclInstalled = await isFbsimctlInstalled();
-    if (!fbsimclInstalled) {
-      console.log(`setLocation only works through fbsimcl currently`);
+    if (!await isFbsimctlInstalled()) {
       return;
     }
     await device.relaunchApp({ permissions: { location: 'always' } });

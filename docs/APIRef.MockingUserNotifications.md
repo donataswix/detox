@@ -1,5 +1,7 @@
-
-# Mocking User Notifications
+---
+id: APIRef.MockingUserNotifications
+title: Mocking User Notifications
+---
 
 Detox supports mocking user notifications for iOS apps.
 
@@ -17,7 +19,7 @@ await device.relaunchApp({userNotification: notification});
 ```js
 describe('Background push notification', () => {
 	beforeEach(async () => {
-	  await device.relaunchApp({userNotification: userNotificationPushTrigger}, done)
+	  await device.relaunchApp({userNotification: userNotificationPushTrigger})
 	});
 
 	it('push notification from background', async () => {

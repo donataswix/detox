@@ -1,14 +1,9 @@
-# Contributing to detox
+---
+id: Guide.Contributing
+title: Contributing
+---
 
-### Clone detox and submodules
-
-```sh
-git clone git@github.com:wix/detox.git
-cd detox
-git submodule update --init --recursive
-```
-(this makes sure all git submodule dependencies are properly checked out)
-
+## Prerequisites
 
 ### Install `node` v7.6 or higher (to support async-await natively)
 
@@ -30,10 +25,24 @@ For all the internal projects (detox, detox-server, detox-cli, demos, test) `ler
 ```sh
 gem install xcpretty
 ```
-### Installing
+
+Alternatively, run `scripts/install.ios.sh` / `scripts/install.android.sh` to install all prerequisites.
+
+## Detox
+
+### Clone Detox and submodules
 
 ```sh
-lerna bootstrap
+git clone git@github.com:wix/detox.git
+cd detox
+git submodule update --init --recursive
+```
+(this makes sure all git submodule dependencies are properly checked out)
+
+### Installing and linking internal projects
+
+```sh
+scripts/bootstrap.sh
 ```
 
 ### Building
@@ -43,6 +52,8 @@ lerna run build
 ```
 
 ### Testing
+
+### 1. Unit tests
 
 ```sh
 lerna run test
@@ -66,15 +77,14 @@ cd detox
 open coverage/lcov-report/index.html
 ```
 
-### Running detox e2e covarage tests
-Detox has a suite of e2e tests to test its own API while developing (and for regression). The way we do is is by maintaining a special application that is "tested" against detox's API, but essentially, it's the API that is tested, not the app.
+### 2. Running Detox e2e coverage tests
+Detox has a suite of e2e tests to test its own API while developing (and for regression). The way we do is is by maintaining a special application that is "tested" against Detox's API, but essentially, it's the API that is tested, not the app.
 To run the e2e tests, go to `detox/detox/test`
 
 ```sh
 cd detox/test
 ```
 
-To build the application (if you already ran `lerna run build` you're covered)
 
 ```sh
 npm run build
@@ -82,11 +92,28 @@ npm run build
 
 To run the e2e tests, after the application was built.
 
+#### iOS
 ```sh
-npm run e2e
+npm run build:ios
+npm run e2e:ios
 ```
 
-### Code Generation
+#### Android
+```sh
+npm run build:android
+npm run e2e:android
+```
+
+### 3. Android Native tests
+
+0. Install Java and Android SDK 25
+1. In `detox/android` run `./gradlew install` run
+
+	```sh
+	./gradlew test
+	```
+
+### 4. Code Generation
 
 We are using a code generator based on `babel` and `objective-c-parser` to generate a Javascript Interface for `EarlGrey` (the testing library we use on iOS).
 This interface allows us to call Objective-C methods through the WebSocket connection directly on the testing device. 

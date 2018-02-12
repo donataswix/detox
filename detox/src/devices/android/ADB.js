@@ -1,5 +1,5 @@
 const path = require('path');
-const exec = require('../../utils/exec').execWithRetriesAndLogs;
+const {execWithRetriesAndLogs, spawnAndLog} = require('../../utils/exec');
 const _ = require('lodash');
 const EmulatorTelnet = require('./EmulatorTelnet');
 const Environment = require('../../utils/environment');
@@ -18,8 +18,8 @@ class ADB {
   async parseAdbDevicesConsoleOutput(input) {
     const outputToList = input.trim().split('\n');
     const devicesList = _.takeRight(outputToList, outputToList.length - 1);
-    let devices = [];
-    for (let deviceString of devicesList) {
+    const devices = [];
+    for (const deviceString of devicesList) {
       const deviceParams = deviceString.split('\t');
       const deviceAdbName = deviceParams[0];
       let device;
@@ -29,13 +29,13 @@ class ADB {
         await telnet.connect(port);
         const name = await telnet.avdName();
         device = {type: 'emulator', name: name, adbName: deviceAdbName, port: port};
+        await telnet.quit();
       } else if (this.isGenymotion(deviceAdbName)) {
         device = {type: 'genymotion', name: deviceAdbName, adbName: deviceAdbName};
       } else {
         device = {type: 'device', name: deviceAdbName, adbName: deviceAdbName};
       }
       devices.push(device);
-
     }
     return devices;
   }
@@ -49,7 +49,12 @@ class ADB {
   }
 
   async install(deviceId, apkPath) {
-    await this.adbCmd(deviceId, `install -r -g ${apkPath}`);
+    const apiLvl = await this.apiLevel(deviceId);
+    if (apiLvl >= 24) {
+      await this.adbCmd(deviceId, `install -r -g ${apkPath}`);
+    } else {
+      await this.adbCmd(deviceId, `install -rg ${apkPath}`);
+    }
   }
 
   async uninstall(deviceId, appId) {
@@ -65,13 +70,73 @@ class ADB {
   }
 
   async shell(deviceId, cmd) {
-    await this.adbCmd(deviceId, `shell ${cmd}`)
+    return (await this.adbCmd(deviceId, `shell ${cmd}`)).stdout.trim();
+  }
+
+  async waitForBootComplete(deviceId) {
+    try {
+      const bootComplete = await this.shell(deviceId, `getprop dev.bootcomplete`);
+      if (bootComplete === '1') {
+        return true;
+      } else {
+        await this.sleep(2000);
+        return await this.waitForBootComplete(deviceId);
+      }
+    } catch (ex) {
+      await this.sleep(2000);
+      return await this.waitForBootComplete(deviceId);
+    }
+  }
+
+  async apiLevel(deviceId) {
+    const lvl = await this.shell(deviceId, `getprop ro.build.version.sdk`);
+    return Number(lvl);
   }
 
   async adbCmd(deviceId, params) {
     const serial = `${deviceId ? `-s ${deviceId}` : ''}`;
     const cmd = `${this.adbBin} ${serial} ${params}`;
-    return await exec(cmd, undefined, undefined, 1);
+    return await execWithRetriesAndLogs(cmd, undefined, undefined, 1);
+  }
+
+  async sleep(ms = 0) {
+    return new Promise((resolve, reject) => setTimeout(resolve, ms));
+  }
+
+  async getScreenSize(deviceId) {
+    const {stdout} = await this.adbCmd(deviceId, `shell wm size`);
+    const [width, height] = stdout.split(' ').pop().split('x');
+    return {
+      width: parseInt(width, 10),
+      height: parseInt(height, 10)
+    };
+  }
+
+  async getFileSize(deviceId, path) {
+    const {stdout} = await this.adbCmd(deviceId, `shell wc -c ${path}`);
+    return parseInt(stdout, 10);
+  }
+
+  screencap(deviceId, path) {
+    return this.adbCmd(deviceId, `shell screencap ${path}`);
+  }
+
+  screenrecord(deviceId, path, width, height) {
+    const params = width && height ? ['--size', width + 'x' + height] : [];
+    return this.spawn(deviceId, ['shell', 'screenrecord', ...params, path]);
+  }
+
+  pull(deviceId, src, dst = '') {
+    return this.adbCmd(deviceId, `pull "${src}" "${dst}"`);
+  }
+
+  rm(deviceId, path, force = false) {
+    return this.adbCmd(deviceId, `shell rm ${force ? '-f' : ''} "${path}"`);
+  }
+
+  spawn(deviceId, params) {
+    const serial = deviceId ? ['-s', deviceId] : [];
+    return spawnAndLog(this.adbBin, [...serial, ...params]);
   }
 }
 

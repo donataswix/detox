@@ -5,7 +5,12 @@ import com.wix.invoke.types.ClassTarget;
 import com.wix.invoke.types.Invocation;
 import com.wix.invoke.types.InvocationTarget;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Test;
+
+import java.util.ArrayList;
+
 import static org.assertj.core.api.Java6Assertions.assertThat;
 
 /**
@@ -57,9 +62,26 @@ public class JsonParserTest {
         assertThat(parse("targetInvocationEspressoDetox.json")).isEqualToComparingFieldByFieldRecursively(perform);
     }
 
+    @Test
+    public void fromJsonTargetInvocationWithListParams() {
+        ArrayList<String> params = new ArrayList<>();
+        params.add(".*10.0.2.2.*");
+        Invocation test = new Invocation(new ClassTarget("com.wix.detox.espresso.EspressoDetox"), "setURLBlacklist", params);
+        assertThat(parse("fromJsonTargetInvocationWithListParams.json")).isEqualToComparingFieldByFieldRecursively(test);
+    }
+
+    public Invocation parseString(String jsonString) {
+        JSONObject json = new JsonParser().parse(jsonString);
+        try {
+            return new Invocation(json);
+        } catch (JSONException e) {
+            System.err.println("Could not parse json, got error: " + e.getMessage());
+            return new Invocation();
+        }
+    }
 
     public Invocation parse(String filePath) {
-        String jsonData = TestUtils.jsonFileToString(filePath);
-        return new JsonParser().parse(jsonData, Invocation.class);
+        String jsonString = TestUtils.jsonFileToString(filePath);
+        return parseString(jsonString);
     }
 }

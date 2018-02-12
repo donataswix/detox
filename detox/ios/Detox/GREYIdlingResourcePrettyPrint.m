@@ -8,27 +8,71 @@
 
 #import "GREYIdlingResourcePrettyPrint.h"
 @import ObjectiveC;
+#include <os/log.h>
 
-static NSMapTable<NSString*, id>* __tarckedObjectsMapping;
+@interface __DTXDeallocSafeProxy : NSObject
+
+@property (nonatomic, unsafe_unretained) id object;
+
+@end
+
+@implementation __DTXDeallocSafeProxy
+
+- (NSString *)description
+{
+	return [self.object description];
+}
+
+- (NSString *)debugDescription
+{
+	return [self.object debugDescription];
+}
+
+- (void)dealloc
+{
+	self.object = nil;
+}
+
+- (instancetype)initWithObject:(id)object
+{
+	self = [super init];
+	if(self)
+	{
+		self.object = object;
+		objc_setAssociatedObject(object, "__DTXDeallocSafeProxy", self, OBJC_ASSOCIATION_RETAIN);
+	}
+	return self;
+}
+
+@end
+
+@interface NSMapTable<KeyType, ObjectType> ()
+
+- (NSArray<ObjectType>*)allValues;
+
+@end
+
+static NSMapTable<GREYAppStateTrackerObject*, __DTXDeallocSafeProxy*>* __tarckedObjectsMapping;
 
 @interface GREYAppStateTracker (PrettyPrint) @end
 
 @implementation GREYAppStateTracker (PrettyPrint)
 
-- (NSString *)_pp__trackState:(GREYAppState)state forElement:(id)element;
+- (GREYAppStateTrackerObject *)_pp__trackState:(GREYAppState)state forObject:(id)element;
 {
-	NSString* rv = [self _pp__trackState:state forElement:element];
+	GREYAppStateTrackerObject* rv = [self _pp__trackState:state forObject:element];
 	
-	[__tarckedObjectsMapping setObject:element forKey:rv];
+	__DTXDeallocSafeProxy* proxy = [[__DTXDeallocSafeProxy alloc] initWithObject:element];
+	[__tarckedObjectsMapping setObject:proxy forKey:rv];
 	
 	return rv;
 }
 
-- (void)_pp__untrackState:(GREYAppState)state forElementWithID:(NSString *)elementID;
+- (void)_pp__untrackState:(GREYAppState)state forObject:(GREYAppStateTrackerObject*)obj;
 {
-	[self _pp__untrackState:state forElementWithID:elementID];
+	[self _pp__untrackState:state forObject:obj];
 	
-	[__tarckedObjectsMapping removeObjectForKey:elementID];
+	[__tarckedObjectsMapping removeObjectForKey:obj];
 }
 
 
@@ -38,13 +82,13 @@ static NSMapTable<NSString*, id>* __tarckedObjectsMapping;
 	dispatch_once(&onceToken, ^{
 		__tarckedObjectsMapping = [NSMapTable mapTableWithKeyOptions:NSMapTableStrongMemory valueOptions:NSMapTableWeakMemory];
 		
-		Method m1 = class_getInstanceMethod(self, @selector(trackState:forElement:));
-		Method m2 = class_getInstanceMethod(self, @selector(_pp__trackState:forElement:));
+		Method m1 = class_getInstanceMethod(self, @selector(trackState:forObject:));
+		Method m2 = class_getInstanceMethod(self, @selector(_pp__trackState:forObject:));
 		
 		method_exchangeImplementations(m1, m2);
 		
-		m1 = class_getInstanceMethod(self, @selector(untrackState:forElementWithID:));
-		m2 = class_getInstanceMethod(self, @selector(_pp__untrackState:forElementWithID:));
+		m1 = class_getInstanceMethod(self, @selector(untrackState:forObject:));
+		m2 = class_getInstanceMethod(self, @selector(_pp__untrackState:forObject:));
 		
 		method_exchangeImplementations(m1, m2);
 	});
@@ -119,25 +163,23 @@ NSDictionary* _prettyPrintAppStateTracker(GREYAppStateTracker* tracker)
 	rv[@"appState"] = stateString;
 	
 	
-	NSHashTable* elements = [tracker valueForKey:@"elementIDs"];
-	NSArray* allElements = [elements allObjects];
+	NSArray<__DTXDeallocSafeProxy*>* allElements = __tarckedObjectsMapping.allValues;
 	
 	NSMutableArray* elems = [NSMutableArray new];
 	NSMutableArray* URLs = [NSMutableArray new];
 	
-	[allElements enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-		id actualElement = [__tarckedObjectsMapping objectForKey:obj];
-		
-		if(actualElement == nil)
+	[allElements enumerateObjectsUsingBlock:^(__DTXDeallocSafeProxy* _Nonnull actualElement, NSUInteger idx, BOOL * _Nonnull stop) {
+		id actualObject = actualElement.object;
+		if(actualObject == nil)
 		{
 			return;
 		}
 		
-		[elems addObject:[actualElement description]];
+		[elems addObject:[actualObject description]];
 		
-		if([actualElement isKindOfClass:[NSURLSessionTask class]])
+		if([actualObject isKindOfClass:[NSURLSessionTask class]])
 		{
-			[URLs addObject:[(NSURLSessionTask*)actualElement originalRequest].URL.absoluteString];
+			[URLs addObject:[(NSURLSessionTask*)actualObject originalRequest].URL.absoluteString];
 		}
 	}];
 	

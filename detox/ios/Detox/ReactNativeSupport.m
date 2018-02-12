@@ -21,6 +21,8 @@
 @import ObjectiveC;
 @import Darwin;
 
+DTX_CREATE_LOG(ReactNativeSupport);
+
 NSString *const RCTReloadNotification = @"RCTReloadNotification";
 
 static dispatch_queue_t __currentIdlingResourceSerialQueue;
@@ -77,6 +79,36 @@ dispatch_queue_t wx_dispatch_queue_create(const char *_Nullable label, dispatch_
 	return rv;
 }
 
+static int (*__WX_UIApplicationMain_orig)(int argc, char * _Nonnull * _Null_unspecified argv, NSString * _Nullable principalClassName, NSString * _Nullable delegateClassName);
+static int __WX_UIApplicationMain(int argc, char * _Nonnull * _Null_unspecified argv, NSString * _Nullable principalClassName, NSString * _Nullable delegateClassName)
+{
+	Class cls = NSClassFromString(@"RCTJSCExecutor");
+	Method m = NULL;
+	if(cls != NULL)
+	{
+		//Legacy RN
+		m = class_getClassMethod(cls, NSSelectorFromString(@"runRunLoopThread"));
+	}
+	else
+	{
+		//Modern RN
+		cls = NSClassFromString(@"RCTCxxBridge");
+		m = class_getClassMethod(cls, NSSelectorFromString(@"runRunLoop"));
+		if(m == NULL)
+		{
+			m = class_getInstanceMethod(cls, NSSelectorFromString(@"runJSRunLoop"));
+		}
+	}
+	
+	if(m != NULL)
+	{
+		orig_runRunLoopThread = (void(*)(id, SEL))method_getImplementation(m);
+		method_setImplementation(m, (IMP)swz_runRunLoopThread);
+	}
+	
+	return __WX_UIApplicationMain_orig(argc, argv, principalClassName, delegateClassName);
+}
+
 __attribute__((constructor))
 void setupForTests()
 {
@@ -114,7 +146,7 @@ void setupForTests()
 			
 			[__observedQueues addObject:queue];
 			
-			NSLog(@"☣️ Adding idling resource for queue: %@", queue);
+			dtx_log_info(@"Adding idling resource for queue: %@", queue);
 			
 			
 			[[GREYUIThreadExecutor sharedInstance] registerIdlingResource:[GREYDispatchQueueIdlingResource resourceWithDispatchQueue:queue name:queueName ?: @"SomeReactQueue"]];
@@ -129,25 +161,10 @@ void setupForTests()
 	[__observedQueues addObject:queue];
 	[[GREYUIThreadExecutor sharedInstance] registerIdlingResource:[GREYDispatchQueueIdlingResource resourceWithDispatchQueue:queue name:@"RCTUIManagerQueue"]];
 	
-	cls = NSClassFromString(@"RCTJSCExecutor");
-	m = NULL;
-	if(cls != NULL)
-	{
-		//Legacy RN
-		m = class_getClassMethod(cls, NSSelectorFromString(@"runRunLoopThread"));
-	}
-	else
-	{
-		//Modern RN
-		cls = NSClassFromString(@"RCTCxxBridge");
-		m = class_getInstanceMethod(cls, NSSelectorFromString(@"runJSRunLoop"));
-	}
-	
-	if(m != NULL)
-	{
-		orig_runRunLoopThread = (void(*)(id, SEL))method_getImplementation(m);
-		method_setImplementation(m, (IMP)swz_runRunLoopThread);
-	}
+	struct rebinding rebindings2[] = {
+		{"UIApplicationMain", __WX_UIApplicationMain, (void*)&__WX_UIApplicationMain_orig}
+	};
+	rebind_symbols(rebindings2, sizeof(rebindings2) / sizeof(rebindings2[0]));
 	
 	[[GREYUIThreadExecutor sharedInstance] registerIdlingResource:[WXJSTimerObservationIdlingResource new]];
 	

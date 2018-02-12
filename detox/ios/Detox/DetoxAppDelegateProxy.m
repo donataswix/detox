@@ -10,15 +10,43 @@
 @import ObjectiveC;
 @import UIKit;
 @import UserNotifications;
+@import COSTouchVisualizer;
 
 #import <Detox/Detox-Swift.h>
 
 @class DetoxAppDelegateProxy;
 
 static DetoxAppDelegateProxy* _currentAppDelegateProxy;
+static COSTouchVisualizerWindow* _touchVisualizerWindow;
 
-@interface DetoxAppDelegateProxy () <UIApplicationDelegate>
+@interface UIWindow (DTXEventProxy) @end
+
+@implementation UIWindow (DTXEventProxy)
+
++ (void)load
+{
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		Method m1 = class_getInstanceMethod(self, @selector(sendEvent:));
+		Method m2 = class_getInstanceMethod(self, @selector(__dtx_sendEvent:));
+		method_exchangeImplementations(m1, m2);
+	});
+}
+
+- (void)__dtx_sendEvent:(UIEvent *)event
+{
+	if([self isKindOfClass:[COSTouchVisualizerWindow class]])
+	{
+		return;
+	}
+	
+	[_touchVisualizerWindow sendEvent:event];
+	[self __dtx_sendEvent:event];
+}
+
 @end
+
+@interface DetoxAppDelegateProxy () <UIApplicationDelegate, COSTouchVisualizerWindowDelegate> @end
 
 @implementation DetoxAppDelegateProxy
 
@@ -27,25 +55,54 @@ static DetoxAppDelegateProxy* _currentAppDelegateProxy;
 	return _currentAppDelegateProxy;
 }
 
+static void __copyMethods(Class orig, Class target)
+{
+	//Copy class methods
+	Class targetMetaclass = object_getClass(target);
+	
+	unsigned int methodCount = 0;
+	Method *methods = class_copyMethodList(object_getClass(orig), &methodCount);
+	
+	for (unsigned int i = 0; i < methodCount; i++)
+	{
+		Method method = methods[i];
+		if(strcmp(sel_getName(method_getName(method)), "load") == 0 || strcmp(sel_getName(method_getName(method)), "initialize") == 0)
+		{
+			continue;
+		}
+		class_addMethod(targetMetaclass, method_getName(method), method_getImplementation(method), method_getTypeEncoding(method));
+	}
+	
+	free(methods);
+	
+	//Copy instance methods
+	methods = class_copyMethodList(orig, &methodCount);
+	
+	for (unsigned int i = 0; i < methodCount; i++)
+	{
+		Method method = methods[i];
+		class_addMethod(target, method_getName(method), method_getImplementation(method), method_getTypeEncoding(method));
+	}
+	
+	free(methods);
+}
+
 + (void)load
 {
 	Method m = class_getInstanceMethod([UIApplication class], @selector(setDelegate:));
 	void (*orig)(id, SEL, id<UIApplicationDelegate>) = (void*)method_getImplementation(m);
-	method_setImplementation(m, imp_implementationWithBlock(^ (id _self, id<UIApplicationDelegate> origDelegate) {
+	method_setImplementation(m, imp_implementationWithBlock(^ (id _self, id<UIApplicationDelegate, COSTouchVisualizerWindowDelegate> origDelegate) {
 		//Only create a dupe class if the provided instance is not already a dupe class.
-		if([origDelegate respondsToSelector:@selector(__dtx_canaryInTheCoalMine)] == NO)
+		if(origDelegate != nil && [origDelegate respondsToSelector:@selector(__dtx_canaryInTheCoalMine)] == NO)
 		{
-			
 			NSString* clsName = [NSString stringWithFormat:@"%@(%@)", NSStringFromClass([origDelegate class]), NSStringFromClass([DetoxAppDelegateProxy class])];
 			Class cls = objc_getClass(clsName.UTF8String);
 			
 			if(cls == nil)
 			{
-				cls = objc_duplicateClass([DetoxAppDelegateProxy class], clsName.UTF8String, 0);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated"
-				class_setSuperclass(cls, origDelegate.class);
-#pragma clang diagnostic pop
+				cls = objc_allocateClassPair(origDelegate.class, clsName.UTF8String, 0);
+				__copyMethods([DetoxAppDelegateProxy class], cls);
+				objc_registerClassPair(cls);
 			}
 			
 			object_setClass(origDelegate, cls);
@@ -62,7 +119,16 @@ static DetoxAppDelegateProxy* _currentAppDelegateProxy;
 
 - (void)__dtx_applicationDidLaunchNotification:(NSNotification*)notification
 {
-	[self.userNotificationDispatcher dispatchOnAppDelegate:self simulateDuringLaunch:YES];
+	[self.__dtx_userNotificationDispatcher dispatchOnAppDelegate:self simulateDuringLaunch:YES];
+
+	dispatch_async(dispatch_get_main_queue(), ^{
+		_touchVisualizerWindow = [[COSTouchVisualizerWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+		_touchVisualizerWindow.windowLevel = 100000000000;
+		_touchVisualizerWindow.backgroundColor = [UIColor.greenColor colorWithAlphaComponent:0.0];
+		_touchVisualizerWindow.hidden = NO;
+		_touchVisualizerWindow.touchVisualizerWindowDelegate = self;
+		_touchVisualizerWindow.userInteractionEnabled = NO;
+	});
 }
 
 - (NSURL*)_userNotificationDataURL
@@ -112,7 +178,7 @@ static DetoxAppDelegateProxy* _currentAppDelegateProxy;
 	return rv;
 }
 
-- (DetoxUserNotificationDispatcher*)userNotificationDispatcher
+- (DetoxUserNotificationDispatcher*)__dtx_userNotificationDispatcher
 {
 	DetoxUserNotificationDispatcher* rv = objc_getAssociatedObject(self, _cmd);
 	
@@ -127,7 +193,7 @@ static DetoxAppDelegateProxy* _currentAppDelegateProxy;
 
 - (BOOL)application:(UIApplication *)application willFinishLaunchingWithOptions:(nullable NSDictionary<UIApplicationLaunchOptionsKey, id>*)launchOptions
 {
-	launchOptions = [self _prepareLaunchOptions:launchOptions userNotificationDispatcher:self.userNotificationDispatcher];
+	launchOptions = [self _prepareLaunchOptions:launchOptions userNotificationDispatcher:self.__dtx_userNotificationDispatcher];
 	
 	BOOL rv = YES;
 	if([class_getSuperclass(object_getClass(self)) instancesRespondToSelector:_cmd])
@@ -142,7 +208,7 @@ static DetoxAppDelegateProxy* _currentAppDelegateProxy;
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(nullable NSDictionary<UIApplicationLaunchOptionsKey, id> *)launchOptions
 {
-	launchOptions = [self _prepareLaunchOptions:launchOptions userNotificationDispatcher:self.userNotificationDispatcher];
+	launchOptions = [self _prepareLaunchOptions:launchOptions userNotificationDispatcher:self.__dtx_userNotificationDispatcher];
 	
 	BOOL rv = YES;
 	if([class_getSuperclass(object_getClass(self)) instancesRespondToSelector:_cmd])
@@ -152,12 +218,17 @@ static DetoxAppDelegateProxy* _currentAppDelegateProxy;
 		rv = super_class(&super, _cmd, application, launchOptions);
 	}
 	
-	if(self.userNotificationDispatcher == nil && [self _URLOverride] && [class_getSuperclass(object_getClass(self)) instancesRespondToSelector:@selector(application:openURL:options:)])
+	if(self.__dtx_userNotificationDispatcher == nil && [self _URLOverride] && [class_getSuperclass(object_getClass(self)) instancesRespondToSelector:@selector(application:openURL:options:)])
 	{
 		[self application:application openURL:[self _URLOverride] options:launchOptions];
 	}
 	
 	return rv;
+}
+
+- (BOOL)touchVisualizerWindowShouldAlwaysShowFingertip:(COSTouchVisualizerWindow *)window
+{
+	return YES;
 }
 
 @end

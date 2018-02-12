@@ -1,9 +1,16 @@
+---
+id: README
+title: detox
+sidebar_label: Overview
+---
+
 # Detox Documentation
 
 ## Introduction
 
 - [Getting Started](Introduction.GettingStarted.md)
-- [Writing You First Passing Test](Introduction.WritingFirstTest.md)
+- [Writing Your First Passing Test](Introduction.WritingFirstTest.md)
+- [Adding Android](Introduction.Android.md)
 - [How Detox Works](Introduction.HowDetoxWorks.md)
 - [Recommended Workflows With Detox](Introduction.Workflows.md)
 
@@ -36,6 +43,7 @@
 - [Debugging Apps in Xcode During a Test](Guide.DebuggingInXcode.md)
 - [Advanced Mocking With Detox](Guide.Mocking.md)
 - [Migration Between Detox Versions](Guide.Migration.md)
+- [Use Jest as Test Runner](Guide.Jest.md)
 
 ## Under The Hood
 
@@ -45,3 +53,4 @@
 
 - [Detox Contribution Guide](Guide.Contributing.md)
 - [Detox Development Roadmap](More.Roadmap.md)
+- [Android Support - Current Status](More.AndroidSupportStatus.md)

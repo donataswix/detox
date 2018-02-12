@@ -1,26 +1,43 @@
 const _ = require('lodash');
 const path = require('path');
-const AAPT = require('./android/AAPT');
+const tempfile = require('tempfile');
 const Emulator = require('./android/Emulator');
 const EmulatorTelnet = require('./android/EmulatorTelnet');
 const Environment = require('../utils/environment');
 const AndroidDriver = require('./AndroidDriver');
+const ini = require('ini');
+const fs = require('fs');
+const os = require('os');
 
 class EmulatorDriver extends AndroidDriver {
-
   constructor(client) {
     super(client);
-
-    this.aapt = new AAPT();
     this.emulator = new Emulator();
+    this._uniqueId = 1;
+    this._recordings = {};
   }
 
-  async prepare() {
+  async _fixEmulatorConfigIniSkinName(name) {
+    const configFile = `${os.homedir()}/.android/avd/${name}.avd/config.ini`;
+    const config = ini.parse(fs.readFileSync(configFile, 'utf-8'));
 
+    if (!config['skin.name']) {
+      const width = config['hw.lcd.width'];
+      const height = config['hw.lcd.height'];
+
+      if (width === undefined || height === undefined) {
+        throw new Error(`Emulator with name ${name} has a corrupt config.ini file (${configFile}), try fixing it by recreating an emulator.`);
+      }
+
+      config['skin.name'] = `${width}x${height}`;
+      fs.writeFileSync(configFile, ini.stringify(config));
+    }
+    return config;
   }
 
   async boot(deviceId) {
     await this.emulator.boot(deviceId);
+    await this.adb.waitForBootComplete(deviceId);
   }
 
   async acquireFreeDevice(name) {
@@ -36,6 +53,7 @@ class EmulatorDriver extends AndroidDriver {
       make sure you choose one of the available emulators: ${avds.toString()}`);
     }
 
+    await this._fixEmulatorConfigIniSkinName(name);
     await this.emulator.boot(name);
 
     const adbDevices = await this.adb.devices();
@@ -43,18 +61,18 @@ class EmulatorDriver extends AndroidDriver {
 
     let adbName;
     switch (filteredDevices.length) {
-      case 1:
-        const adbDevice = filteredDevices[0];
-        adbName = adbDevice.adbName;
-        break;
       case 0:
         throw new Error(`Could not find '${name}' on the currently ADB attached devices, 
       try restarting adb 'adb kill-server && adb start-server'`);
+      case 1:
+        const adbDevice = filteredDevices[0];
+        adbName = adbDevice.adbName;
         break;
       default:
         throw new Error(`Got more than one device corresponding to the name: ${name}`);
     }
 
+    await this.adb.waitForBootComplete(adbName);
     await this.adb.unlockScreen(adbName);
     return adbName;
   }

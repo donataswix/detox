@@ -1,4 +1,7 @@
-# Getting Started
+---
+id: Introduction.GettingStarted
+title: Getting Started
+---
 
 This is a step-by-step guide for adding Detox to your React Native project.
 
@@ -12,7 +15,7 @@ Running Detox (on iOS) requires the following:
 
 * Mac with macOS (at least macOS El Capitan 10.11)
 
-* Xcode 8.2+ with Xcode command line tools
+* Xcode 8.3+ with Xcode command line tools
 > TIP: Verify Xcode command line tools is installed by typing `gcc -v` in terminal (shows a popup if not installed)
 
 * A working [React Native](https://facebook.github.io/react-native/docs/getting-started.html) app you want to test
@@ -30,16 +33,16 @@ Homebrew is a package manager for macOS, we'll need it to install other command 
 #### 2. Install [Node.js](https://nodejs.org/en/)
 
 Node is the JavaScript runtime Detox will run on. **Install Node 7.6.0 or above for native async-await support**
-	
+
  ```sh
- brew update && brew install node 
+ brew update && brew install node
  ```
 
 > TIP: Verify it works by typing in terminal `node -v` to output current node version, should be higher than 7.6.0
-	 
+
 #### 3. Install [appleSimUtils](https://github.com/wix/AppleSimulatorUtils)
-	 
-A collection of utils for Apple simulators, Detox uses it communicate with the simulator. 
+
+A collection of utils for Apple simulators, Detox uses it communicate with the simulator.
 
 ```sh
 brew tap wix/brew
@@ -71,16 +74,18 @@ npm install detox --save-dev
 
 #### 2. Install mocha
 
-You can use any JavaScript test runner, [Mocha](https://mochajs.org/) is a good one we recommend:
+You can use any JavaScript test runner
+- [Jest](Guide.Jest.md)
+- [Mocha](https://mochajs.org/) is a good one we recommend:
 
 ```sh
 npm install mocha --save-dev
-``` 
+```
 
 #### 3. Add Detox config to package.json
 
 The basic configuration for Detox should be in your `package.json` file under the `detox` property:
-	
+
 ```json
 "detox": {
   "configurations": {
@@ -90,13 +95,13 @@ The basic configuration for Detox should be in your `package.json` file under th
       "type": "ios.simulator",
       "name": "iPhone 7"
     }
-  } 
+  }
 }
 ```
-	
+
 In the above configuration example, change `example` to your actual project name. Under the key `"binaryPath"`, `example.app` should be `<your_project_name>.app`. Under the key `"build"`, `example.xcodeproj` should be `<your_project_name>.xcodeproj` and `-scheme example` should be `-scheme <your_project_name>`.
 
-For iOS apps in a workspace (eg: Cocoapods) use `-workspace ios/example.xcworkspace` instead of `-project`.
+For iOS apps in a workspace (eg: CocoaPods) use `-workspace ios/example.xcworkspace` instead of `-project`.
 
 Also make sure the simulator model specified under the key `"name"` (`iPhone 7` above) is actually available on your machine (it was installed by Xcode). Check this by typing `xcrun simctl list` in terminal to display all available simulators.
 
@@ -143,6 +148,6 @@ Use the Detox command line tools to test your project easily:
 detox test
 ```
 
-That's it. Your first failing Detox test is running! 
+That's it. Your first failing Detox test is running!
 
 Next, we'll go over usage and how to make this test [actually pass](Introduction.WritingFirstTest.md).
